@@ -39,7 +39,9 @@ Monthly .csv files were used for this analysis. The information used within the 
 
 ### Key tasks followed
 1.Downloaded the data and stored it on my computer to a separate file
+
 2.Downloaded the data for Jan 23’ to Dec 23’ time frame
+
 3.The data is in .csv format, there are a total of 13 columns to start with and a beginning row count of 5,719,877
 
 ### Process
