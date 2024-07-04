@@ -1,0 +1,367 @@
+import pandas as pd 
+from pandas.api.types import CategoricalDtype
+
+import numpy as np
+
+import datetime
+
+#loading libraries
+---
+jan_2023=pd.read_csv('/kaggle/input/bike-share-23/202301-divvy-tripdata.csv')
+feb_2023=pd.read_csv('/kaggle/input/bike-share-23/202302-divvy-tripdata.csv')
+mar_2023=pd.read_csv('/kaggle/input/bike-share-23/202303-divvy-tripdata.csv')
+apr_2023=pd.read_csv('/kaggle/input/bike-share-23/202304-divvy-tripdata.csv')
+may_2023=pd.read_csv('/kaggle/input/bike-share-23/202305-divvy-tripdata.csv')
+jun_2023=pd.read_csv('/kaggle/input/bike-share-23/202306-divvy-tripdata.csv')
+jul_2023=pd.read_csv('/kaggle/input/bike-share-23/202307-divvy-tripdata.csv')
+aug_2023=pd.read_csv('/kaggle/input/bike-share-23/202308-divvy-tripdata.csv')
+sep_2023=pd.read_csv('/kaggle/input/bike-share-23/202309-divvy-tripdata.csv')
+oct_2023=pd.read_csv('/kaggle/input/bike-share-23/202310-divvy-tripdata.csv')
+nov_2023=pd.read_csv('/kaggle/input/bike-share-23/202311-divvy-tripdata.csv')
+dec_2023=pd.read_csv('/kaggle/input/bike-share-23/202312-divvy-tripdata.csv')
+#importing 12 csv files from jan to dec 
+---
+bike_rides=pd.concat([jan_2023,feb_2023,mar_2023,apr_2023,may_2023,jun_2023,jul_2023,aug_2023,sep_2023,oct_2023,nov_2023,dec_2023])
+
+bike_rides
+#combing 12 csv files into one file titled bike_rides   
+---
+bike_rides.info()
+---
+bike_rides.isnull().any()
+#checking null data
+---
+bike_rides.isnull().values.sum()
+3624089
+---
+bike_rides=bike_rides.drop(columns=['start_station_name','end_station_name','start_station_id','end_station_id','end_lat','end_lng','start_lat','start_lng'])
+
+#dropping uneccessary columns(columns not needed for analysis/ ones that cary null values)
+#start_lat and start_lng also dropped 
+---
+bike_rides.head()
+---
+bike_rides.duplicated()
+#checking for duplicates
+---
+0         False
+1         False
+2         False
+3         False
+4         False
+          ...  
+224068    False
+224069    False
+224070    False
+224071    False
+224072    False
+Length: 5719877, dtype: bool
+ no duplicates found
+---
+bike_rides['started_at'] = pd.to_datetime(bike_rides['started_at'])
+
+bike_rides['ended_at'] = pd.to_datetime(bike_rides['ended_at'])
+
+#changing object types to datetime so that difference of time can be calculated 
+---
+bike_rides.info()
+<class 'pandas.core.frame.DataFrame'>
+Index: 5719877 entries, 0 to 224072
+Data columns (total 5 columns):
+ #   Column         Dtype         
+---  ------         -----         
+ 0   ride_id        object        
+ 1   rideable_type  object        
+ 2   started_at     datetime64[ns]
+ 3   ended_at       datetime64[ns]
+ 4   member_casual  object        
+dtypes: datetime64[ns](2), object(3)
+memory usage: 261.8+ MB
+---
+bike_rides['ride_length'] = (bike_rides['ended_at'] - bike_rides['started_at'])/datetime.timedelta(minutes=1)
+bike_rides['ride_length'] = bike_rides['ride_length'].astype('int32')
+
+#creating a new column titled 'ride length'
+#ride length- difference in minutes of start and end time of rides 
+---
+bike_rides.head()
+ride_id	rideable_type	started_at	ended_at	member_casual	ride_length
+0	F96D5A74A3E41399	electric_bike	2023-01-21 20:05:42	2023-01-21 20:16:33	member	10
+1	13CB7EB698CEDB88	classic_bike	2023-01-10 15:37:36	2023-01-10 15:46:05	member	8
+2	BD88A2E670661CE5	electric_bike	2023-01-02 07:51:57	2023-01-02 08:05:11	casual	13
+3	C90792D034FED968	classic_bike	2023-01-22 10:52:58	2023-01-22 11:01:44	member	8
+4	3397017529188E8A	classic_bike	2023-01-12 13:58:01	2023-01-12 14:13:20	member	15
+---
+bike_rides[bike_rides['ride_length'] <= 0].count()
+#checking where ride length has less than 0 or 0 as count 
+ride_id          149615
+rideable_type    149615
+started_at       149615
+ended_at         149615
+member_casual    149615
+ride_length      149615
+dtype: int64
+---
+bike_rides = bike_rides[bike_rides['ride_length'] >= 1]
+
+bike_rides = bike_rides.reset_index()
+
+bike_rides = bike_rides.drop(columns=['index'])
+
+#removing rows where ride length has 0 or less minutes 
+bike_rides
+#149615 rows deleted 
+---
+bike_rides['hour'] = bike_rides['started_at'].dt.hour
+
+bike_rides = bike_rides.astype({'hour':'int8'})
+#extracting hour of day from started_at 
+---
+bike_rides['day_of_week'] = bike_rides['started_at'].dt.day_name()
+
+bike_rides['month'] = bike_rides['started_at'].dt.month_name()
+---
+bike_rides.head()
+---
+###Analyze  
+---
+#total count of riders-member and casual 
+import pandas as pd
+bike_rides_pvt = pd.pivot_table(bike_rides,
+                                values ='ride_id', 
+                                index ='member_casual',
+                                aggfunc = ['count'],
+                                margins = 'true', 
+                                margins_name = 'Total Count')
+
+bike_rides_pvt
+---
+#total count of riders per rideable type
+bike_rides_pvt2 = pd.pivot_table(bike_rides,
+                                 values = 'ride_id',
+                                 index = ['rideable_type','member_casual'],
+                                 aggfunc =['count'], 
+                                 margins = 'true', 
+                                 margins_name = 'Total Riders')
+
+bike_rides_pvt2
+---
+#total count of riders per day of week 
+bike_rides_pvt3 = pd.pivot_table(bike_rides,
+                                 values = ['ride_length'], 
+                                 index = ['day_of_week', 'member_casual'], 
+                                 aggfunc = ['count'], 
+                                 margins = 'true', 
+                                 margins_name = 'Total' )
+
+bike_rides_pvt3
+---
+#average ride length per weekday for members and casual riders 
+bike_rides_pvt4 = pd.pivot_table(bike_rides,
+                                 values = ['ride_length'], 
+                                 index = ['day_of_week','member_casual'],
+                                 aggfunc = 'mean', 
+                                 margins = 'true', 
+                                 margins_name = 'Total Average')
+
+bike_rides_pvt4
+---
+ #average ride length for members/ casual per month 
+bike_rides_pvt5 = pd.pivot_table(bike_rides,
+                                 values = ['ride_length'], 
+                                 index = ['month','member_casual'],
+                                 aggfunc = 'mean', 
+                                 margins = 'true', 
+                                 margins_name = 'Total Average')
+
+bike_rides_pvt5 
+---
+#total count of rides for member/casual per hour 
+bike_rides_pvt6 = pd.pivot_table(bike_rides,
+                                 values = ['ride_id'],
+                                 index =['hour','member_casual'],
+                                 aggfunc = 'count', 
+                                 margins = 'true', 
+                                 margins_name = 'Total Count')
+
+bike_rides_pvt6
+---
+#total ride count for members and casual per month
+bike_rides_pvt7 = pd.pivot_table(bike_rides, 
+                                 values = ['ride_id'],
+                                 index = ['month','member_casual'],
+                                 aggfunc = 'count', 
+                                 margins = 'true',
+                                 margins_name = 'Total Count')
+
+bike_rides_pvt7
+---
+bike_rides_pvt8 = pd.pivot_table(bike_rides, 
+                                 values =['ride_length'],index = 'member_casual', 
+                                 aggfunc = 'mean', 
+                                 margins = 'true', 
+                                 margins_name = 'Total Average')
+
+bike_rides_pvt8
+---
+### visualization codes 
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns
+
+# Count total rides for each member type
+total_rides_by_member = bike_rides['member_casual'].value_counts()
+
+# Create the bar chart with specified colors and y-axis range
+plt.figure(figsize=(8, 6))
+sns.barplot(x=total_rides_by_member.index, y=total_rides_by_member.values, 
+            palette=['turquoise', 'maroon'])  
+plt.title('Total Number of Rides by Member Type')
+plt.xlabel('Member Type')
+plt.ylabel('Number of Rides')
+plt.ylim(0, 4000000)  # Set y-axis range from 0 to 4 million
+plt.show()
+---
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns
+
+# Extract the month from the 'started_at' column
+bike_rides['month'] = bike_rides['started_at'].dt.month_name()
+
+# Group and count rides by member type and month
+monthly_counts = bike_rides.groupby(['member_casual', 'month'])['ride_id'].count().reset_index()
+
+# Define the desired month order
+month_order = ['January', 'February', 'March', 'April', 'May', 'June', 
+               'July', 'August', 'September', 'October', 'November', 'December']
+
+# Apply the month order to the 'month' column
+monthly_counts['month'] = pd.Categorical(monthly_counts['month'], categories=month_order, ordered=True)
+monthly_counts = monthly_counts.sort_values('month')
+
+# Create the bar chart with specified colors
+plt.figure(figsize=(12, 6))
+sns.barplot(data=monthly_counts, x='month', y='ride_id', hue='member_casual', 
+            palette={'casual': 'maroon', 'member': 'turquoise'})
+plt.title('Total Count of Rides per Month by Member Type')
+plt.xlabel('Month')
+plt.ylabel('Number of Rides')
+plt.xticks(rotation=45, ha='right') 
+plt.show()
+---
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns
+
+# Group and count rides by member type and day of the week
+daily_counts = bike_rides.groupby(['member_casual', 'day_of_week'])['ride_id'].count().reset_index()
+
+# Ensure days are ordered from Sunday to Saturday
+day_order = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+daily_counts['day_of_week'] = pd.Categorical(daily_counts['day_of_week'], categories=day_order, ordered=True)
+daily_counts = daily_counts.sort_values('day_of_week')
+
+# Create the line chart with specified colors
+plt.figure(figsize=(10, 6))
+sns.lineplot(data=daily_counts, x='day_of_week', y='ride_id', hue='member_casual', 
+             palette={'casual': 'maroon', 'member': 'turquoise'})  # Set colors
+plt.title('Number of Bike Rides Throughout the Week by Member Type')
+plt.xlabel('Day of Week')
+plt.ylabel('Number of Rides')
+plt.show()
+---
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns
+
+# Extract the hour from the 'started_at' column
+bike_rides['start_hour'] = bike_rides['started_at'].dt.hour
+
+# Group and count rides by member type and start hour
+hourly_counts = bike_rides.groupby(['member_casual', 'start_hour'])['ride_id'].count().reset_index()
+
+# Create the bar chart with specified colors
+plt.figure(figsize=(12, 6))
+sns.barplot(data=hourly_counts, x='start_hour', y='ride_id', hue='member_casual',
+            palette={'casual': 'maroon', 'member': 'turquoise'})
+plt.title('Number of Bike Rides per Hour by Member Type')
+plt.xlabel('Start Hour')
+plt.ylabel('Number of Rides')
+plt.show()
+---
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns
+
+# Extract the month from the 'started_at' column
+bike_rides['month'] = bike_rides['started_at'].dt.month_name()
+
+# Calculate average ride length per month for each member type (in minutes)
+monthly_avg_rides = bike_rides.groupby(['member_casual', 'month'])['ride_length'].mean().reset_index()
+monthly_avg_rides['ride_length_minutes'] = monthly_avg_rides['ride_length'] / 60  # Convert to minutes
+
+# Define the desired month order
+month_order = ['January', 'February', 'March', 'April', 'May', 'June', 
+               'July', 'August', 'September', 'October', 'November', 'December']
+
+# Apply the month order to the 'month' column
+monthly_avg_rides['month'] = pd.Categorical(monthly_avg_rides['month'], categories=month_order, ordered=True)
+monthly_avg_rides = monthly_avg_rides.sort_values('month')
+
+# Create the bar chart with specified colors and ride length in minutes
+plt.figure(figsize=(12, 6))
+sns.barplot(data=monthly_avg_rides, x='month', y='ride_length_minutes', hue='member_casual', 
+            palette={'member': 'turquoise', 'casual': 'maroon'})
+plt.title('Average Ride Length per Month by Member Type')
+plt.xlabel('Month')
+plt.ylabel('Average Ride Length (minutes)')  # Updated y-axis label
+plt.xticks(rotation=45, ha='right') 
+plt.show()
+---
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns
+
+# Group and count rides by member type and rideable type
+ride_type_counts = bike_rides.groupby(['member_casual', 'rideable_type'])['ride_id'].count().reset_index()
+
+# Create the bar chart with specified colors
+plt.figure(figsize=(10, 6))
+sns.barplot(data=ride_type_counts, x='rideable_type', y='ride_id', hue='member_casual',
+            palette={'member': 'turquoise', 'casual': 'maroon'})
+plt.title('Number of Rides by Rideable Type and Member Type')
+plt.xlabel('Rideable Type')
+plt.ylabel('Number of Rides')
+plt.show()
+---
+import pandas as pd
+import matplotlib.pyplot as plt 
+import seaborn as sns
+
+# Calculate average ride length in minutes for each member type
+avg_ride_length = bike_rides.groupby('member_casual')['ride_length'].mean().reset_index()
+avg_ride_length['ride_length_minutes'] = avg_ride_length['ride_length'] / 60
+
+# Create the bar chart with specified colors
+plt.figure(figsize=(8, 6))
+sns.barplot(data=avg_ride_length, x='member_casual', y='ride_length_minutes',
+            palette={'member': 'turquoise', 'casual': 'maroon'})  # Set colors
+plt.title('Average Ride Length by Member Type')
+plt.xlabel('Member Type')
+plt.ylabel('Average Ride Length (minutes)')
+plt.show()
+---
+import pandas as pd
+import matplotlib.pyplot as plt 
+
+# Count total rides for each member type
+total_rides_by_member = bike_rides['member_casual'].value_counts()
+
+# Create the pie chart with specified colors
+plt.figure(figsize=(8, 8))
+plt.pie(total_rides_by_member, labels=total_rides_by_member.index, 
+        autopct='%1.1f%%', colors=['turquoise', 'maroon'])  # Set colors
+plt.title('Total Number of Rides by Member Type')
+plt.show()
+---
